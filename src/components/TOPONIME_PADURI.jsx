@@ -9,7 +9,7 @@ export default function TOPONIME_PADURI() {
     async function loadGeoJSON() {
       try {
         console.log("Încep încărcarea fișierului: /data/TOPONIME_PADURI.geojson");
-        const res = await fetch("/data/TOPONIME_PADURI.geojson");
+        const res = await fetch("./data/TOPONIME_PADURI.geojson");
         if (!res.ok) {
           throw new Error(`Eroare HTTP! Status: ${res.status}`);
         }

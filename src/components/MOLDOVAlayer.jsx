@@ -8,7 +8,7 @@ export default function MOLDOVAlayer() {
     // ✅ async function inside useEffect
     async function loadGeoJSON() {
       try {
-        const res = await fetch("/data/MOLDOVA.geojson");
+        const res = await fetch("./data/MOLDOVA.geojson");
         const json = await res.json();
         setData(json);
       } catch (err) {

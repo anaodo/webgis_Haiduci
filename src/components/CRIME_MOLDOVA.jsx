@@ -9,7 +9,7 @@ export default function CRIME_MOLDOVA() {
     async function loadGeoJSON() {
       try {
         console.log("Încep încărcarea fișierului: /data/CRIME_MOLDOVA.geojson");
-        const res = await fetch("/data/CRIME_MOLDOVA.geojson");
+        const res = await fetch("./data/CRIME_MOLDOVA.geojson");
         if (!res.ok) {
           throw new Error(`Eroare HTTP! Status: ${res.status}`);
         }

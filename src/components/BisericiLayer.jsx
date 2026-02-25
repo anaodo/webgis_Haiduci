@@ -8,7 +8,7 @@ export default function BisericiLayer() {
     // ✅ async function inside useEffect
     async function loadGeoJSON() {
       try {
-        const res = await fetch("/data/biserici_RO.geojson");
+        const res = await fetch("./data/biserici_RO.geojson");
         const json = await res.json();
         setData(json);
       } catch (err) {

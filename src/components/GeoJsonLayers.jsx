@@ -1,7 +1,7 @@
 import { Overlay } from "react-leaflet/LayersControl";
 import { GeoJSON } from "react-leaflet";
 
-import buildings from "../data/biserici_RO.geojson";
+import buildings from "./data/biserici_RO.geojson";
 
 
 export default function GeoJsonLayers() {

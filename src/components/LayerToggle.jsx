@@ -55,7 +55,7 @@ export default function LayerToggle() {
             checked={showBiserici}
             onChange={(e) =>
               handleLayerToggle(setShowBiserici, e.target.checked, async () => {
-                await fetch("/data/biserici_RO.geojson"); // simulate load
+                await fetch("./data/biserici_RO.geojson"); // simulate load
               })
             }
           />
@@ -69,7 +69,7 @@ export default function LayerToggle() {
             checked={showJudete}
             onChange={(e) =>
               handleLayerToggle(setShowJudete, e.target.checked, async () => {
-                await fetch("/data/ro_judete_poligon.geojson");
+                await fetch("./data/ro_judete_poligon.geojson");
               })
             }
           />
@@ -85,7 +85,7 @@ export default function LayerToggle() {
             checked={showMOLDOVA}
             onChange={(e) =>
               handleLayerToggle(setshowMOLDOVA, e.target.checked, async () => {
-                await fetch("/data/MOLDOVA.geojson");
+                await fetch("./data/MOLDOVA.geojson");
               })
             }
           />
@@ -99,7 +99,7 @@ export default function LayerToggle() {
             checked={showPADURI}
             onChange={(e) =>
               handleLayerToggle(setshowPADURI, e.target.checked, async () => {
-                await fetch("/data/PADURI MOLDOVA.geojson");
+                await fetch("./data/PADURI MOLDOVA.geojson");
               })
             }
           />
@@ -115,7 +115,7 @@ export default function LayerToggle() {
             checked={showTOPONIME_PADURI}
             onChange={(e) =>
               handleLayerToggle(setShowTOPONIME_PADURI, e.target.checked, async () => {
-                await fetch("/data/TOPONIME_PADURI.geojson");
+                await fetch("./data/TOPONIME_PADURI.geojson");
               })
             }
           />
@@ -129,7 +129,7 @@ export default function LayerToggle() {
             checked={showCRIME_MOLDOVA}
             onChange={(e) =>
               handleLayerToggle(setShowCRIME_MOLDOVA, e.target.checked, async () => {
-                await fetch("/data/CRIME_MOLDOVA.geojson");
+                await fetch("./data/CRIME_MOLDOVA.geojson");
               })
             }
           />

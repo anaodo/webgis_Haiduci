@@ -1,0 +1,4 @@
+.leaflet-container {
+    height: 100vh; /* Asta va face harta să ocupe tot ecranul */
+    width: 100%;
+}

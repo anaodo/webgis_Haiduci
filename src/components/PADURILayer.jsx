@@ -8,7 +8,7 @@ export default function PADURILayer() {
     // ✅ async function inside useEffect
     async function loadGeoJSON() {
       try {
-        const res = await fetch("/data/PADURI MOLDOVA.geojson");
+        const res = await fetch("./data/PADURI MOLDOVA.geojson");
         const json = await res.json();
         setData(json);
       } catch (err) {

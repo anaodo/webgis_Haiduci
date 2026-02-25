@@ -8,7 +8,7 @@ export default function RoJudeteLayer() {
     // ✅ async function inside useEffect
     async function loadGeoJSON() {
       try {
-        const res = await fetch("/data/ro_judete_poligon.geojson");
+        const res = await fetch("./data/ro_judete_poligon.geojson");
         const json = await res.json();
         setData(json);
       } catch (err) {
