@@ -1,0 +1,148 @@
+
+This is a document that contains queries used for carrying out the quantitative analysis for the paper Integrating Romanian Toponymy in a GIS Background: 
+dictionary forest names vs. OpenStreetMap forest data, authored by Roxana Patras, Ana Odochiciuc, Mihai-Bogdan Atanasiu, Constantin Răchită 
+“Alexandru Ioan Cuza” University of Iași, Institute of Interdisciplinary Research, 
+roxana.patras@uaic.ro; ana.honcu@uaic.ro; bogdan.atanasiu@uaic.ro; constantin.rachita@uaic.ro
+
+ 
+
+1. Persistence Analysis
+-- 1. Merge all toponymic points into a single virtual list
+WITH all_toponyms AS (
+    SELECT 'Iasi' AS county, * FROM tema_4.topo_forest_iasi
+    UNION ALL
+    SELECT 'Neamt' AS county, * FROM tema_4.topo_forest_neamt
+    UNION ALL
+    SELECT 'Vaslui' AS county, * FROM tema_4.topo_forest_vaslui
+    UNION ALL
+    SELECT 'Vrancea' AS county, * FROM tema_4.topo_forest_vrancea
+),
+-- 2. Merge all OSM forest polygons into a single virtual list
+all_osm_forests AS (
+    SELECT geom FROM tema_4."OSM_Forest_Iasi"
+    UNION ALL
+    SELECT geom FROM tema_4."OSM_Forest_Neamt"
+    UNION ALL
+    SELECT geom FROM tema_4."OSM_Forest_Vaslui"
+    UNION ALL
+    SELECT geom FROM tema_4."OSM_Forest_Vrancea"
+)
+-- 3. Select toponyms that intersect with current forest coverage
+SELECT 
+    t.county,
+    t.* -- All columns from the original toponyms table will be retrieved here
+FROM 
+    all_toponyms t
+INNER JOIN 
+    all_osm_forests f ON ST_Intersects(t.geom, f.geom);
+
+
+
+2. Nearest Neighbor Analysis
+
+WITH all_toponyms AS (
+    -- Aggregate all toponymic points from the study area
+    SELECT 'Iasi' AS county, "Forest Name" AS toponym, geom FROM tema_4.topo_forest_iasi UNION ALL
+    SELECT 'Neamt' AS county, "Forest Name" AS toponym, geom FROM tema_4.topo_forest_neamt UNION ALL
+    SELECT 'Vaslui' AS county, "Forest Name" AS toponym, geom FROM tema_4.topo_forest_vaslui UNION ALL
+    SELECT 'Vrancea' AS county, "Forest Name" AS toponym, geom FROM tema_4.topo_forest_vrancea
+),
+all_osm_forests AS (
+    -- Aggregate all OSM forest polygons (ensure SRID 3844 for metric accuracy)
+    SELECT ST_Transform(geom, 3844) AS geom FROM tema_4."OSM_Forest_Iasi" UNION ALL
+    SELECT ST_Transform(geom, 3844) AS geom FROM tema_4."OSM_Forest_Neamt" UNION ALL
+    SELECT ST_Transform(geom, 3844) AS geom FROM tema_4."OSM_Forest_Vaslui" UNION ALL
+    SELECT ST_Transform(geom, 3844) AS geom FROM tema_4."OSM_Forest_Vrancea"
+)
+SELECT 
+    t.county,
+    t.toponym,
+    -- Calculate retreat distance in meters, rounded to 2 decimal places
+    ROUND(ST_Distance(t.geom, p.geom)::numeric, 2) AS retreat_distance_meters
+FROM 
+    all_toponyms t
+CROSS JOIN LATERAL (
+    -- Find the nearest forest polygon for each point (Nearest Neighbor search)
+    -- The <-> operator utilizes the spatial index for high performance
+    SELECT geom 
+    FROM all_osm_forests 
+    ORDER BY t.geom <-> geom 
+    LIMIT 1
+) p
+-- Filter only for points located outside current forests (distance > 0)
+WHERE ST_Distance(t.geom, p.geom) > 0
+ORDER BY retreat_distance_meters DESC;
+
+
+
+3. Grid analysis
+
+WITH study_area_extent AS (
+    -- Calculate the bounding box (Bbox) of the study area to define the grid extent
+    SELECT 
+        ST_XMin(geom_all) as xmin, ST_YMin(geom_all) as ymin,
+        ST_XMax(geom_all) as xmax, ST_YMax(geom_all) as ymax
+    FROM (
+        SELECT ST_Extent(geom) as geom_all FROM tema_4.topo_forest_iasi
+    ) as sub
+),
+grid_cells AS (
+    -- Generate 5000m (5km) square fishnet grid cells
+    SELECT ST_MakeEnvelope(x, y, x + 5000, y + 5000, 3844) as geom
+    FROM (
+        SELECT generate_series(floor(xmin)::int, ceil(xmax)::int, 5000) as x,
+               generate_series(floor(ymin)::int, ceil(ymax)::int, 5000) as y
+        FROM study_area_extent
+    ) as gs
+),
+all_toponyms AS (
+    -- Aggregate all toponymic points from the study area
+    SELECT geom FROM tema_4.topo_forest_iasi UNION ALL
+    SELECT geom FROM tema_4.topo_forest_neamt UNION ALL
+    SELECT geom FROM tema_4.topo_forest_vaslui UNION ALL
+    SELECT geom FROM tema_4.topo_forest_vrancea
+),
+all_forests AS (
+    -- Aggregate all current forest polygons (ensuring CRS 3844 for metric calculations)
+    SELECT ST_Transform(geom, 3844) as geom FROM tema_4."OSM_Forest_Iasi" UNION ALL
+    SELECT ST_Transform(geom, 3844) as geom FROM tema_4."OSM_Forest_Neamt" UNION ALL
+    SELECT ST_Transform(geom, 3844) as geom FROM tema_4."OSM_Forest_Vaslui" UNION ALL
+    SELECT ST_Transform(geom, 3844) as geom FROM tema_4."OSM_Forest_Vrancea"
+)
+SELECT 
+    row_number() OVER()::int as cell_id,
+    count(t.geom) as toponym_count,
+    -- Calculate forest area within the cell (in km2)
+    ROUND((COALESCE(SUM(ST_Area(ST_Intersection(p.geom, g.geom))), 0) / 1000000)::numeric, 2) as current_forest_km2,
+    -- Change Score (Hotspot Analysis): Identifies areas with high toponym frequency but low forest cover
+    -- Logic: (Toponym Count) / (Forest km2 + 0.1 constant to prevent division by zero)
+    ROUND((count(t.geom) / (COALESCE(SUM(ST_Area(ST_Intersection(p.geom, g.geom))), 0) / 1000000 + 0.1))::numeric, 2) as change_score,
+    g.geom::geometry(Polygon, 3844) as geom
+FROM grid_cells g
+LEFT JOIN all_toponyms t ON ST_Intersects(t.geom, g.geom)
+LEFT JOIN all_forests p ON ST_Intersects(p.geom, g.geom)
+GROUP BY g.geom
+HAVING count(t.geom) > 0 OR SUM(ST_Area(ST_Intersection(p.geom, g.geom))) > 0;
+
+
+
+4. Heart of forest Analysis
+
+WITH forest_nuclei AS (
+    -- Identify the "Heart of the Forest" (the most central internal point) for each forest patch
+    -- ST_PointOnSurface is used to ensure the point is mathematically inside the polygon
+    SELECT 
+        id AS osm_id,
+        geom AS forest_geom,
+        ST_Area(geom) / 10000 AS area_ha,
+        ST_PointOnSurface(geom) AS core_point_geom
+    FROM tema_4.osm_forest_all
+)
+SELECT 
+    t.id AS toponym_id,
+    p.osm_id AS forest_patch_id,
+    ROUND(p.area_ha::numeric, 2) AS forest_area_ha,
+    ROUND(ST_Distance(t.geom, p.core_point_geom)::numeric, 2) AS distance_to_core_meters
+FROM tema_4.topo_forest_all t
+JOIN forest_nuclei p ON ST_Intersects(t.geom, p.forest_geom)
+ORDER BY p.area_ha DESC, distance_to_core_meters ASC;
